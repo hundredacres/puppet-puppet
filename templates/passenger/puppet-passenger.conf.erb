@@ -15,8 +15,13 @@ Listen <%= port %>
         SSLEngine on
         SSLProtocol -ALL +SSLv3 +TLSv1
         SSLCipherSuite ALL:!ADH:RC4+RSA:+HIGH:+MEDIUM:-LOW:-SSLv2:-EXP
+        <% if scope.lookupvar('puppet::server_certname') != '' %>
+        SSLCertificateFile /var/lib/puppet/ssl/certs/<%= scope.lookupvar('puppet::server_certname') -%>.pem
+        SSLCertificateKeyFile /var/lib/puppet/ssl/private_keys/<%= scope.lookupvar('puppet::server_certname') -%>.pem
+        <%else -%>
         SSLCertificateFile /var/lib/puppet/ssl/certs/<%= fqdn %>.pem
         SSLCertificateKeyFile /var/lib/puppet/ssl/private_keys/<%= fqdn %>.pem
+        <% end -%>
         SSLCertificateChainFile /var/lib/puppet/ssl/certs/ca.pem
         SSLCACertificateFile /var/lib/puppet/ssl/certs/ca.pem
         SSLVerifyClient optional

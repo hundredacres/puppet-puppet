@@ -33,6 +33,12 @@
 
 <% if scope.lookupvar('puppet::params::major_version') == "0.2" -%>[puppetmasterd]<% else -%>[master]<% end %>
   masterport = <%= scope.lookupvar('puppet::port') %>
+<% if scope.lookupvar('puppet::server_certname') != '' %>
+  certname = <%= scope.lookupvar('puppet::server_certname') -%>
+<% else -%>
+  certname = puppet.<%= domain -%> 
+<% end -%>
+
 <% if scope.lookupvar('puppet::bindaddress') != '' -%>
   bindaddress = <%= scope.lookupvar('puppet::bindaddress') %>
 <% end -%>

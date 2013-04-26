@@ -334,6 +334,7 @@
 class puppet (
   $mode                = params_lookup( 'mode' ),
   $server              = params_lookup( 'server' ),
+  $server_certname     = params_lookup( 'server_certname' ),
   $environment         = params_lookup( 'environment' ),
   $allow               = params_lookup( 'allow' ),
   $bindaddress         = params_lookup( 'bindaddress' ),
