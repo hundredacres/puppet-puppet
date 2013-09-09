@@ -4,12 +4,20 @@
   vardir = <%= scope.lookupvar('puppet::data_dir') %>
   logdir = <%= scope.lookupvar('puppet::log_dir') %>
   rundir = <%= scope.lookupvar('puppet::run_dir') %>
-  ssldir = $vardir/ssl
+  ssldir = <%= scope.lookupvar('puppet::ssl_dir') %>
   usecacheonfailure = true
   user = <%= scope.lookupvar('puppet::process_user') %>
-  group = <%= scope.lookupvar('puppet::process_user') %>
+  group = <%= scope.lookupvar('puppet::process_group') %>
 
   masterport = <%= scope.lookupvar('puppet::port') %>
+
+<% if scope.lookupvar('puppet::http_proxy_host') != '' -%>
+  http_proxy_host = "<%= scope.lookupvar('puppet::http_proxy_host') -%>"
+<% end -%>
+
+<% if scope.lookupvar('puppet::http_proxy_port') != '' -%>
+  http_proxy_port = "<%= scope.lookupvar('puppet::http_proxy_port') -%>"
+<% end -%>
 
 <% if scope.lookupvar('puppet::prerun_command') != '' -%>
   prerun_command = "<%= scope.lookupvar('puppet::prerun_command') -%>"

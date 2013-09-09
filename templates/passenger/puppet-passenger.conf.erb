@@ -1,8 +1,8 @@
 # File Managed by Puppet
 
-Listen <%= port %>
+Listen <%= @port %>
 
-<VirtualHost *:<%= port %>>
+<VirtualHost *:<%= @port %>>
         # you probably want to tune these settings
         PassengerHighPerformance on
         PassengerMaxPoolSize 12
@@ -28,18 +28,18 @@ Listen <%= port %>
         SSLVerifyDepth 1
         SSLOptions +StdEnvVars
 
-        DocumentRoot <%= docroot %>
+        DocumentRoot <%= @docroot %>
         RackBaseURI /
-        <Directory <%= docroot %>>
+        <Directory <%= @docroot %>>
                 Options None
                 AllowOverride None
                 Order allow,deny
                 allow from all
         </Directory>
        
-        ErrorLog <%= scope.lookupvar('apache::params::log_dir') %>/<%= name %>_error.log
+        ErrorLog <%= scope.lookupvar('apache::params::log_dir') %>/<%= @name %>_error.log
         LogLevel warn
-        CustomLog <%= scope.lookupvar('apache::params::log_dir') %>/<%= name %>_access.log combined
+        CustomLog <%= scope.lookupvar('apache::params::log_dir') %>/<%= @name %>_access.log combined
         ServerSignature On
 
 </VirtualHost>
