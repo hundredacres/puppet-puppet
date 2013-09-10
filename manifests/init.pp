@@ -15,6 +15,16 @@
 #   FQDN of the puppet server. Default: puppet.$domain or just puppet
 #   if $domain fact is blank
 #
+# [*server_certname*]
+#   Set certname for the puppetmaster
+#
+# [*ca_authority*]
+#   Specify alternative host for the CA server
+#
+# [*ca_server*]
+#   Defines the puppetmaster as the CA server.
+#   Can be used when load balancing puppetmasters Default: true
+#
 # [*environment*]
 #   The default environmentset in puppet.conf. Default: production
 #
@@ -31,10 +41,14 @@
 # [*nodetool*]
 #
 # [*runmode*]
+#   One of 'cron', 'manual', or 'service'.
 #
 # [*runinterval*]
+#   How much time should pass between two puppet runs. In seconds.
 #
 # [*croninterval*]
+#   Cron interval specification when the puppet agent should run.
+#   If defined must be in cron like syntax (ie: 4 5 * * *)
 #
 # [*croncommand*]
 #
@@ -51,13 +65,13 @@
 # [*storeconfigs_thin*]
 #
 # [*db*]
-#   
+#
 # [*db_name*]
 #
 # [*db_server*]
 #
 # [*db_port*]
-#   DB port to connet to (Used only for puppetdb)
+#   DB port to connect to (Used only for puppetdb)
 #
 # [*db_user*]
 #
@@ -81,6 +95,24 @@
 #
 # [*service_server_autorestart*]
 #
+# [*dns_alt_names*]
+#   The comma-separated list of alternative DNS names to use for the local
+#   host. When the node generates a CSR for itself, these are added to the
+#   request as the desired subjectAltName in the certificate: additional DNS
+#   labels that the certificate is also valid answering as. This is generally
+#   required if you use a non-hostname certname, or if you want to use puppet
+#   kick or puppet resource -H and the primary certname does not match the DNS
+#   name you use to communicate with the host. This is unnecessary for agents,
+#   unless you intend to use them as a server for puppet kick or remote puppet
+#   resource management. It is rarely necessary for servers; it is usually
+#   helpful only if you need to have a pool of multiple load balanced masters,
+#   or for the same master to respond on two physically separate networks under
+#   different names
+#
+# [*client_daemon_opts*]
+#   If $operatingsystem is Debian or Ubuntu, these options will be passed to
+#   the puppetd on startup
+#
 # [*basedir*]
 #
 # [*template_namespaceauth*]
@@ -94,6 +126,11 @@
 # [*run_dir*]
 #
 # [*reporturl*]
+#
+# Extra Database settings
+#
+# [*mysql_conn_package*]
+# MySQL ruby database connector
 #
 # Standard class parameters
 # Define the general class behaviour and customizations
@@ -276,10 +313,29 @@
 #   Note: This doesn't necessarily affect the service configuration file
 #   Can be defined also by the (top scope) variable $puppet_port
 #
+# [*http_proxy_host*]
+#   The HTTP proxy port, if any, required to perform HTTP requests.
+#   This is used by the agent component.
+#   Note: This doesn't necessarily affect the service configuration file
+#   Can be defined also by the (top scope) variable $puppet_port
+#
+# [*http_proxy_port*]
+#   The HTTP proxy port, if any, required to perform HTTP requests.
+#   This is used by the agent component.
+#
 # [*protocol*]
 #   The protocol used by the the service.
 #   This is used by monitor, firewall and puppi (optional) components
 #   Can be defined also by the (top scope) variable $puppet_protocol
+#
+# [*manifest_path*]
+#   Path to the manifests
+#
+# [*module_path*]
+#   Location of the modules
+#
+# [*template_dir*]
+#   Location of the templates
 #
 #
 # == Examples
@@ -295,92 +351,105 @@
 #   Alessandro Franceschi <al@lab42.it/>
 #
 class puppet (
-  $mode                = params_lookup( 'mode' ),
-  $server              = params_lookup( 'server' ),
-  $environment         = params_lookup( 'environment' ),
-  $allow               = params_lookup( 'allow' ),
-  $bindaddress         = params_lookup( 'bindaddress' ),
-  $listen              = params_lookup( 'listen' ),
-  $port_listen         = params_lookup( 'port_listen' ),
-  $nodetool            = params_lookup( 'nodetool' ),
-  $runmode             = params_lookup( 'runmode' ),
-  $runinterval         = params_lookup( 'runinterval' ),
-  $croninterval        = params_lookup( 'croninterval' ),
-  $croncommand         = params_lookup( 'croncommand' ),
-  $postrun_command     = params_lookup( 'postrun_command' ),
-  $externalnodes       = params_lookup( 'externalnodes' ),
-  $passenger           = params_lookup( 'passenger' ),
-  $autosign            = params_lookup( 'autosign' ),
-  $storeconfigs        = params_lookup( 'storeconfigs' ),
-  $storeconfigs_thin   = params_lookup( 'storeconfigs_thin' ),
-  $db                  = params_lookup( 'db' ),
-  $db_name             = params_lookup( 'db_name' ),
-  $db_server           = params_lookup( 'db_server' ),
-  $db_port             = params_lookup( 'db_port' ),
-  $db_user             = params_lookup( 'db_user' ),
-  $db_password         = params_lookup( 'db_password' ),
-  $inventoryserver     = params_lookup( 'inventoryserver'),
-  $package_server      = params_lookup( 'package_server' ),
-  $service_server      = params_lookup( 'service_server' ),
-  $process_server      = params_lookup( 'process_server' ),
-  $pid_file_server     = params_lookup( 'pid_file_server' ),
-  $process_args_server = params_lookup( 'process_args_server' ),
-  $process_user_server = params_lookup( 'process_user_server' ),
-  $version_server      = params_lookup( 'version_server' ),
+  $mode                       = params_lookup( 'mode' ),
+  $server                     = params_lookup( 'server' ),
+  $server_certname            = params_lookup( 'server_certname' ),
+  $ca_authority               = params_lookup( 'ca_authority' ),
+  $ca_server                  = params_lookup( 'ca_server' ),
+  $environment                = params_lookup( 'environment' ),
+  $allow                      = params_lookup( 'allow' ),
+  $bindaddress                = params_lookup( 'bindaddress' ),
+  $listen                     = params_lookup( 'listen' ),
+  $port_listen                = params_lookup( 'port_listen' ),
+  $splay = params_lookup( 'splay' ),
+  $nodetool                   = params_lookup( 'nodetool' ),
+  $runmode                    = params_lookup( 'runmode' ),
+  $runinterval                = params_lookup( 'runinterval' ),
+  $croninterval               = params_lookup( 'croninterval' ),
+  $croncommand                = params_lookup( 'croncommand' ),
+  $prerun_command             = params_lookup( 'prerun_command' ),
+  $postrun_command            = params_lookup( 'postrun_command' ),
+  $externalnodes              = params_lookup( 'externalnodes' ),
+  $passenger                  = params_lookup( 'passenger' ),
+  $autosign                   = params_lookup( 'autosign' ),
+  $storeconfigs               = params_lookup( 'storeconfigs' ),
+  $storeconfigs_thin          = params_lookup( 'storeconfigs_thin' ),
+  $db                         = params_lookup( 'db' ),
+  $db_name                    = params_lookup( 'db_name' ),
+  $db_server                  = params_lookup( 'db_server' ),
+  $db_port                    = params_lookup( 'db_port' ),
+  $db_user                    = params_lookup( 'db_user' ),
+  $db_password                = params_lookup( 'db_password' ),
+  $inventoryserver            = params_lookup( 'inventoryserver'),
+  $package_server             = params_lookup( 'package_server' ),
+  $service_server             = params_lookup( 'service_server' ),
+  $process_server             = params_lookup( 'process_server' ),
+  $pid_file_server            = params_lookup( 'pid_file_server' ),
+  $process_args_server        = params_lookup( 'process_args_server' ),
+  $process_user_server        = params_lookup( 'process_user_server' ),
+  $version_server             = params_lookup( 'version_server' ),
   $service_server_autorestart = params_lookup( 'service_server_autorestart' ),
-  $basedir             = params_lookup( 'basedir' ),
-  $template_namespaceauth = params_lookup( 'template_namespaceauth' ),
-  $template_auth       = params_lookup( 'template_auth' ),
-  $template_fileserver = params_lookup( 'template_fileserver' ),
-  $template_passenger  = params_lookup( 'template_passenger' ),
-  $run_dir             = params_lookup( 'run_dir' ),
-  $reporturl           = params_lookup( 'reporturl' ),
-  $my_class            = params_lookup( 'my_class' ),
-  $source              = params_lookup( 'source' ),
-  $source_dir          = params_lookup( 'source_dir' ),
-  $source_dir_purge    = params_lookup( 'source_dir_purge' ),
-  $template            = params_lookup( 'template' ),
-  $service_autorestart = params_lookup( 'service_autorestart' , 'global' ),
-  $options             = params_lookup( 'options' ),
-  $version             = params_lookup( 'version' ),
-  $absent              = params_lookup( 'absent' ),
-  $disable             = params_lookup( 'disable' ),
-  $disableboot         = params_lookup( 'disableboot' ),
-  $monitor             = params_lookup( 'monitor' , 'global' ),
-  $monitor_tool        = params_lookup( 'monitor_tool' , 'global' ),
-  $monitor_target      = params_lookup( 'monitor_target' , 'global' ),
-  $puppi               = params_lookup( 'puppi' , 'global' ),
-  $puppi_helper        = params_lookup( 'puppi_helper' , 'global' ),
-  $firewall            = params_lookup( 'firewall' , 'global' ),
-  $firewall_tool       = params_lookup( 'firewall_tool' , 'global' ),
-  $firewall_src        = params_lookup( 'firewall_src' , 'global' ),
-  $firewall_dst        = params_lookup( 'firewall_dst' , 'global' ),
-  $debug               = params_lookup( 'debug' , 'global' ),
-  $audit_only          = params_lookup( 'audit_only' , 'global' ),
-  $package             = params_lookup( 'package' ),
-  $service             = params_lookup( 'service' ),
-  $service_status      = params_lookup( 'service_status' ),
-  $process             = params_lookup( 'process' ),
-  $process_args        = params_lookup( 'process_args' ),
-  $process_user        = params_lookup( 'process_user' ),
-  $config_dir          = params_lookup( 'config_dir' ),
-  $config_file         = params_lookup( 'config_file' ),
-  $config_file_mode    = params_lookup( 'config_file_mode' ),
-  $config_file_owner   = params_lookup( 'config_file_owner' ),
-  $config_file_group   = params_lookup( 'config_file_group' ),
-  $config_file_init    = params_lookup( 'config_file_init' ),
-  $pid_file            = params_lookup( 'pid_file' ),
-  $data_dir            = params_lookup( 'data_dir' ),
-  $log_dir             = params_lookup( 'log_dir' ),
-  $log_file            = params_lookup( 'log_file' ),
-  $port                = params_lookup( 'port' ),
-  $protocol            = params_lookup( 'protocol' )
+  $dns_alt_names              = params_lookup( 'dns_alt_names' ),
+  $client_daemon_opts         = params_lookup( 'client_daemon_opts' ),
+  $mysql_conn_package         = params_lookup( 'mysql_conn_package' ),
+  $basedir                    = params_lookup( 'basedir' ),
+  $template_namespaceauth     = params_lookup( 'template_namespaceauth' ),
+  $template_auth              = params_lookup( 'template_auth' ),
+  $template_fileserver        = params_lookup( 'template_fileserver' ),
+  $template_passenger         = params_lookup( 'template_passenger' ),
+  $template_cron              = params_lookup( 'template_cron' ),
+  $run_dir                    = params_lookup( 'run_dir' ),
+  $reporturl                  = params_lookup( 'reporturl' ),
+  $my_class                   = params_lookup( 'my_class' ),
+  $source                     = params_lookup( 'source' ),
+  $source_dir                 = params_lookup( 'source_dir' ),
+  $source_dir_purge           = params_lookup( 'source_dir_purge' ),
+  $template                   = params_lookup( 'template' ),
+  $service_autorestart        = params_lookup( 'service_autorestart' , 'global' ),
+  $options                    = params_lookup( 'options' ),
+  $version                    = params_lookup( 'version' ),
+  $absent                     = params_lookup( 'absent' ),
+  $disable                    = params_lookup( 'disable' ),
+  $disableboot                = params_lookup( 'disableboot' ),
+  $monitor                    = params_lookup( 'monitor' , 'global' ),
+  $monitor_tool               = params_lookup( 'monitor_tool' , 'global' ),
+  $monitor_target             = params_lookup( 'monitor_target' , 'global' ),
+  $puppi                      = params_lookup( 'puppi' , 'global' ),
+  $puppi_helper               = params_lookup( 'puppi_helper' , 'global' ),
+  $firewall                   = params_lookup( 'firewall' , 'global' ),
+  $firewall_tool              = params_lookup( 'firewall_tool' , 'global' ),
+  $firewall_src               = params_lookup( 'firewall_src' , 'global' ),
+  $firewall_dst               = params_lookup( 'firewall_dst' , 'global' ),
+  $debug                      = params_lookup( 'debug' , 'global' ),
+  $audit_only                 = params_lookup( 'audit_only' , 'global' ),
+  $package                    = params_lookup( 'package' ),
+  $service                    = params_lookup( 'service' ),
+  $service_status             = params_lookup( 'service_status' ),
+  $process                    = params_lookup( 'process' ),
+  $process_args               = params_lookup( 'process_args' ),
+  $process_user               = params_lookup( 'process_user' ),
+  $config_dir                 = params_lookup( 'config_dir' ),
+  $config_file                = params_lookup( 'config_file' ),
+  $config_file_mode           = params_lookup( 'config_file_mode' ),
+  $config_file_owner          = params_lookup( 'config_file_owner' ),
+  $config_file_group          = params_lookup( 'config_file_group' ),
+  $config_file_init           = params_lookup( 'config_file_init' ),
+  $pid_file                   = params_lookup( 'pid_file' ),
+  $data_dir                   = params_lookup( 'data_dir' ),
+  $log_dir                    = params_lookup( 'log_dir' ),
+  $log_file                   = params_lookup( 'log_file' ),
+  $port                       = params_lookup( 'port' ),
+  $http_proxy_host            = params_lookup( 'http_proxy_host' ),
+  $http_proxy_port            = params_lookup( 'http_proxy_port' ),
+  $protocol                   = params_lookup( 'protocol' ),
+  $manifest_path              = params_lookup( 'manifest_path' ),
+  $module_path                = params_lookup( 'module_path' ),
+  $template_dir               = params_lookup( 'template_dir' )
   ) inherits puppet::params {
 
   $bool_listen=any2bool($listen)
   $bool_externalnodes=any2bool($externalnodes)
   $bool_passenger=any2bool($passenger)
-  $bool_autosign=any2bool($autosign)
   $bool_storeconfigs=any2bool($storeconfigs)
   $bool_storeconfigs_thin=any2bool($storeconfigs_thin)
   $bool_service_server_autorestart=any2bool($service_server_autorestart)
@@ -440,8 +509,8 @@ class puppet (
     default =>  $puppet::bool_absent ? {
       true    => 'stopped',
       default => $puppet::runmode ? {
-        cron    => undef,
-        manual  => undef,
+        cron    => 'stopped',
+        manual  => 'stopped',
         service => 'running',
       },
     },
@@ -513,6 +582,7 @@ class puppet (
       client => template('puppet/client/puppet.conf.erb'),
       server => template('puppet/server/puppet.conf.erb'),
     },
+    'absent'  => undef,
     default   => template($puppet::template),
   }
 
@@ -558,10 +628,9 @@ class puppet (
     require    => Package['puppet'],
   }
 
-  # Enable service start on Ubuntu
+  # Enable service start on Ubuntu
   if ($::operatingsystem == 'Ubuntu'
-  or $::operatingsystem == 'Debian')
-  and $puppet::runmode == 'service' {
+  or $::operatingsystem == 'Debian') {
     file { 'default-puppet':
       ensure  => $puppet::manage_file,
       path    => $puppet::config_file_init,
@@ -572,6 +641,10 @@ class puppet (
       group   => $puppet::config_file_group,
       notify  => $puppet::manage_service_autorestart,
     }
+  }
+
+  file { "${data_dir}":
+    mode => 0755,
   }
 
   file { 'puppet.conf':
@@ -671,7 +744,7 @@ class puppet (
 
 
   ### Firewall management, if enabled ( firewall => true )
-  if $puppet::bool_firewall == true 
+  if $puppet::bool_firewall == true
   and $puppet::bool_listen == true {
     firewall { "puppet_${puppet::protocol}_${puppet::port_listen}":
       source      => $puppet::firewall_src,
@@ -704,13 +777,25 @@ class puppet (
   }
 
   ### Cron configuration if run_mode = cron
-  file { 'puppet_cron':
-    ensure  => $puppet::manage_file_cron,
-    path    => '/etc/cron.d/puppet',
-    mode    => '0644',
-    owner   => 'root',
-    group   => 'root',
-    content => template('puppet/client/puppet.cron.erb'),
+  # Quick patch for BSD support and backwards compatibility
+
+  if $::operatingsystem == 'OpenBSD'
+  or $::operatingsystem == 'FreeBSD' {
+    cron { 'puppet_cron':
+      ensure   => $puppet::manage_file_cron,
+      command  => $puppet::croncommand,
+      user     => $puppet::process_user,
+      minute   => [ $puppet::tmp_cronminute , $puppet::tmp_cronminute2 ],
+    }
+  } else {
+    file { 'puppet_cron':
+      ensure  => $puppet::manage_file_cron,
+      path    => '/etc/cron.d/puppet',
+      mode    => '0644',
+      owner   => 'root',
+      group   => 'root',
+      content => template($puppet::template_cron),
+    }
   }
 
 }

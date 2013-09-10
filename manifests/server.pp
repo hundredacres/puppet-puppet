@@ -13,6 +13,7 @@ class puppet::server inherits puppet {
   package { 'puppet_server':
     ensure => $puppet::manage_package_server,
     name   => $puppet::package_server,
+    notify => $puppet::manage_service_server_autorestart,
   }
 
   service { 'puppet_server':
@@ -37,6 +38,12 @@ class puppet::server inherits puppet {
     audit   => $puppet::manage_audit,
   }
 
+  exec { 'puppetmaster-ca-generate':
+    creates => "${puppet::data_dir}/ssl/private_keys/${::fqdn}.pem",
+    command => "/usr/bin/puppet ca generate ${::fqdn}",
+    require => Package['puppet'],
+  }
+
   ### Service monitoring, if enabled ( monitor => true )
   if $puppet::bool_monitor == true {
     monitor::port { "puppet_${puppet::protocol}_${puppet::port}":
@@ -46,14 +53,16 @@ class puppet::server inherits puppet {
       tool     => $puppet::monitor_tool,
       enable   => $puppet::manage_monitor,
     }
-    monitor::process { 'puppet_process_server':
-      process  => $puppet::process_server,
-      service  => $puppet::service_server,
-      pidfile  => $puppet::pid_file_server,
-      user     => $puppet::process_user_server,
-      argument => $puppet::process_args_server,
-      tool     => $puppet::monitor_tool,
-      enable   => $puppet::manage_monitor,
+    if $puppet::bool_passenger == false {
+      monitor::process { 'puppet_process_server':
+        process  => $puppet::process_server,
+        service  => $puppet::service_server,
+        pidfile  => $puppet::pid_file_server,
+        user     => $puppet::process_user_server,
+        argument => $puppet::process_args_server,
+        tool     => $puppet::monitor_tool,
+        enable   => $puppet::manage_monitor,
+      }
     }
   }
 
@@ -79,7 +88,7 @@ class puppet::server inherits puppet {
   case $puppet::db {
     mysql: { include puppet::server::mysql }
     puppetdb: { include puppet::server::puppetdb }
-    default: { }
+    default: { include puppet::server::sqlite }
   }
 
   ### Manage Passenger

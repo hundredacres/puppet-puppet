@@ -1,15 +1,19 @@
 # File managed by Puppet 
 
 [main]
-  vardir = <%= scope.lookupvar('puppet::data_dir') %>
-  logdir = <%= scope.lookupvar('puppet::log_dir') %>
-  rundir = <%= scope.lookupvar('puppet::run_dir') %>
-  ssldir = $vardir/ssl
+  ca_server   = <%= scope.lookupvar('puppet::ca_server') %>
+  vardir      = <%= scope.lookupvar('puppet::data_dir') %>
+  logdir      = <%= scope.lookupvar('puppet::log_dir') %>
+  rundir      = <%= scope.lookupvar('puppet::run_dir') %>
+  templatedir = <%= scope.lookupvar('puppet::template_dir') %>
+  ssldir      = $vardir/ssl
   usecacheonfailure = true
   user = <%= scope.lookupvar('puppet::process_user_server') %>
   group = <%= scope.lookupvar('puppet::process_user_server') %>
-
-<% if scope.lookupvar('puppet::postrun_command') -%>
+<% if scope.lookupvar('puppet::prerun_command') != '' -%>
+  prerun_command = "<%= scope.lookupvar('puppet::prerun_command') -%>"
+<% end -%>
+<% if scope.lookupvar('puppet::postrun_command') != '' -%>
   postrun_command = "<%= scope.lookupvar('puppet::postrun_command') -%>"
 <% end -%>
 
@@ -29,6 +33,16 @@
   localconfig = $vardir/localconfig
 
 <% if scope.lookupvar('puppet::params::major_version') == "0.2" -%>[puppetmasterd]<% else -%>[master]<% end %>
+  masterport = <%= scope.lookupvar('puppet::port') %>
+<% if scope.lookupvar('puppet::server_certname') != '' %>
+  certname = <%= scope.lookupvar('puppet::server_certname') -%>
+<% else -%>
+  certname = puppet.<%= domain -%> 
+<% end -%>
+<% if scope.lookupvar('puppet::ca_authority') == false %>
+  ca = false
+<% end -%>
+
 <% if scope.lookupvar('puppet::bindaddress') != '' -%>
   bindaddress = <%= scope.lookupvar('puppet::bindaddress') %>
 <% end -%>
@@ -36,12 +50,20 @@
   ssl_client_header = SSL_CLIENT_S_DN
   ssl_client_verify_header = SSL_CLIENT_VERIFY
 <% end -%>
-  autosign = <%= scope.lookupvar('puppet::bool_autosign') %>
+  autosign = <%= scope.lookupvar('puppet::autosign') %>
 <% if scope.lookupvar('puppet::bool_storeconfigs') == true or scope.lookupvar('puppet::db') == "puppetdb" -%>
   storeconfigs = true
 <% if scope.lookupvar('puppet::bool_storeconfigs_thin') == true and scope.lookupvar('puppet::db') != "puppetdb" %>
   thin_storeconfigs = true
 <% end -%>
+<% end -%>
+
+  environment = <%= scope.lookupvar('puppet::environment') %>
+  manifest    = <%= scope.lookupvar('puppet::manifest_path') %>
+  modulepath  = <%= scope.lookupvar('puppet::module_path') %>
+
+<% if scope.lookupvar('puppet::dns_alt_names') != '' -%>
+  dns_alt_names = <%= scope.lookupvar('puppet::dns_alt_names') %>
 <% end -%>
 
 <% if scope.lookupvar('puppet::db') == "sqlite" -%>
