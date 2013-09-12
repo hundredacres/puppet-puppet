@@ -1,4 +1,4 @@
-= Puppet module: puppet
+# Puppet module: puppet
 
 This is a Puppet module for puppet based on the second generation layout ("NextGen") of Example42 Puppet Modules.
 
@@ -14,7 +14,7 @@ This module requires functions provided by the Example42 Puppi module (you need 
 
 For detailed info about the logic and usage patterns of Example42 modules check the DOCS directory on Example42 main modules set.
 
-== USAGE - Basic management
+## USAGE - Basic management
 
 * Install puppet with default settings
 
@@ -45,19 +45,21 @@ For detailed info about the logic and usage patterns of Example42 modules check 
         }
 
 
-== USAGE - Overrides and Customizations
-* Use custom sources for main config file 
+## USAGE - Overrides and Customizations
+* Use custom sources for main config file (you have to explicitely disable the default template)
 
         class { 'puppet':
-          source => [ "puppet:///modules/lab42/puppet/puppet.conf-${hostname}" , "puppet:///modules/lab42/puppet/puppet.conf" ], 
+          source   => [ "puppet:///modules/lab42/puppet/puppet.conf-${hostname}" , "puppet:///modules/lab42/puppet/puppet.conf" ], 
+          template => absent,
         }
 
 
-* Use custom source directory for the whole configuration dir
+* Use custom source directory for the whole configuration dir (you have to explicitely disable the default template) 
 
         class { 'puppet':
           source_dir       => 'puppet:///modules/lab42/puppet/conf/',
           source_dir_purge => false, # Set to true to purge any existing file not present in $source_dir
+          template         => absent,
         }
 
 * Use custom template for main config file. Note that template and source arguments are alternative. 
@@ -73,7 +75,7 @@ For detailed info about the logic and usage patterns of Example42 modules check 
         }
 
 
-== USAGE - Example42 extensions management 
+## USAGE - Example42 extensions management 
 * Activate puppi (recommended, but disabled by default)
 
         class { 'puppet':
@@ -103,3 +105,5 @@ For detailed info about the logic and usage patterns of Example42 modules check 
           firewall_dst  => $ipaddress_eth0,
         }
 
+
+[![Build Status](https://travis-ci.org/example42/puppet-puppet.png?branch=master)](https://travis-ci.org/example42/puppet-puppet)
