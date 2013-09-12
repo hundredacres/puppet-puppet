@@ -1,16 +1,33 @@
 # File managed by Puppet
 
 [main]
+  ca_server   = <%= scope.lookupvar('puppet::ca_server') %>
   vardir = <%= scope.lookupvar('puppet::data_dir') %>
   logdir = <%= scope.lookupvar('puppet::log_dir') %>
   rundir = <%= scope.lookupvar('puppet::run_dir') %>
-  ssldir = $vardir/ssl
+  ssldir = <%= scope.lookupvar('puppet::ssl_dir') %>
   usecacheonfailure = true
   user = <%= scope.lookupvar('puppet::process_user') %>
-  group = <%= scope.lookupvar('puppet::process_user') %>
+  group = <%= scope.lookupvar('puppet::process_group') %>
 
-<% if scope.lookupvar('puppet::postrun_command') -%>
+  masterport = <%= scope.lookupvar('puppet::port') %>
+
+<% if scope.lookupvar('puppet::http_proxy_host') != '' -%>
+  http_proxy_host = "<%= scope.lookupvar('puppet::http_proxy_host') -%>"
+<% end -%>
+
+<% if scope.lookupvar('puppet::http_proxy_port') != '' -%>
+  http_proxy_port = "<%= scope.lookupvar('puppet::http_proxy_port') -%>"
+<% end -%>
+
+<% if scope.lookupvar('puppet::prerun_command') != '' -%>
+  prerun_command = "<%= scope.lookupvar('puppet::prerun_command') -%>"
+<% end -%>
+<% if scope.lookupvar('puppet::postrun_command') != '' -%>
   postrun_command = "<%= scope.lookupvar('puppet::postrun_command') -%>"
+<% end -%>
+<% if scope.lookupvar('puppet::splay') == true -%>
+  splay = true
 <% end -%>
 
 <% if scope.lookupvar('puppet::params::major_version') == "0.2" -%>[puppetd]<% else -%>[agent]<% end %>

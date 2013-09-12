@@ -21,11 +21,19 @@ class puppet::params {
   }
 
   $mode = 'client'
-  $server = $::domain ? {
-    ''      => 'puppet',
-    default => "puppet.$::domain",
+  if $::puppetmaster {
+    $server = $::puppetmaster
+  } else {
+    $server = $::domain ? {
+      ''      => 'puppet',
+      default => "puppet.$::domain",
+    }
   }
-  $environment = 'production'
+  if $::foreman_env {
+    $environment = $::foreman_env
+  } else {
+    $environment = 'production'
+  }
   $allow = $::domain ? {
     ''      => [ '127.0.0.1' ],
     default => [ "*.$::domain" , '127.0.0.1' ],
@@ -36,11 +44,23 @@ class puppet::params {
   $nodetool = ''
   $runmode = 'service'
   $runinterval = '1800'
-  $croninterval = '0 * * * *'
+  $splay = false
+  $ca_server = ''
+  $tmp_cronminute = fqdn_rand(30)
+  $tmp_cronminute2 = $tmp_cronminute + 30
+  $template_cron = 'puppet/client/puppet.cron.erb'
+  $croninterval = "${tmp_cronminute},${tmp_cronminute2} * * * *"
   $croncommand = $major_version ? {
-    '0.2' => '/usr/bin/puppetd --onetime',
-    '2.x' => '/usr/bin/puppet agent --onetime',
+    '0.2' => $::operatingsystem ? {
+      /(?i:OpenBSD)/ => '/usr/local/bin/puppetd --onetime --pidfile /var/run/puppet-cron.pid >/dev/null 2>&1',
+      default        => '/usr/bin/puppetd --onetime --pidfile /var/run/puppet-cron.pid',
+    },
+    '2.x' => $::operatingsystem ? {
+      /(?i:OpenBSD)/ => '/usr/local/bin/puppet agent --onetime --pidfile /var/run/puppet-cron.pid >/dev/null 2>&1',
+      default        => '/usr/bin/puppet agent --onetime --pidfile /var/run/puppet-cron.pid',
+    }
   }
+  $prerun_command = ''
   $postrun_command = ''
   $externalnodes = false
   $passenger = false
@@ -66,8 +86,9 @@ class puppet::params {
   }
 
   $process_server = $::operatingsystem ? {
-    /(?i:Debian|Ubuntu|Mint)/ => 'ruby',
-    default                   => 'puppet',
+    /(?i:Debian|Mint)/ => 'ruby',
+    /(?i:Ubuntu)/      => 'puppet',
+    default            => 'puppet',
   }
 
   $pid_file_server = $major_version ? {
@@ -76,8 +97,9 @@ class puppet::params {
   }
 
   $process_args_server = $::operatingsystem ? {
-    /(?i:Debian|Ubuntu|Mint)/ => 'puppet',
-    default                   => 'master',
+    /(?i:Debian|Mint)/ => 'puppet',
+    /(?i:Ubuntu)/      => 'master',
+    default            => 'master',
   }
 
   $process_user_server = $::operatingsystem ? {
@@ -89,12 +111,18 @@ class puppet::params {
   $service_server_autorestart = false
 
   $basedir = $::operatingsystem ? {
-      /(?i:RedHat|Centos|Scientific|Fedora)/ => '/usr/lib/ruby/site_ruby/1.8/puppet',
-      default                                => '/usr/lib/ruby/1.8/puppet',
+    /(?i:RedHat|Centos|Scientific|Fedora|Linux)/ => '/usr/lib/ruby/site_ruby/1.8/puppet',
+    default                                => '/usr/lib/ruby/1.8/puppet',
   }
 
   $run_dir = $::operatingsystem ? {
-    default => '/var/run/puppet',
+    /(?i:OpenBSD)/ => '/var/puppet/run',
+    default        => '/var/run/puppet',
+  }
+
+  $ssl_dir = $::operatingsystem ? {
+    /(?i:OpenBSD)/ => '/etc/puppet/ssl',
+    default        => '/var/lib/puppet/ssl',
   }
 
   $template_namespaceauth = ''
@@ -105,22 +133,27 @@ class puppet::params {
   ### Application related parameters
 
   $package = $::operatingsystem ? {
-    default => 'puppet',
+    /(?i:OpenBSD)/ => 'ruby-puppet',
+    default        => 'puppet',
   }
 
   $service = $::operatingsystem ? {
-    default => 'puppet',
+    /(?i:OpenBSD)/ => 'puppetd',
+    default        => 'puppet',
   }
 
   $service_status = $::operatingsystem ? {
-    debian  => false,
+    debian  => $::lsbmajdistrelease ? {
+      5       => false,
+      default => true,
+    },
     default => true,
   }
 
   $process = $major_version ? {
     '0.2' => 'puppetd',
     '2.x' => $::operatingsystem ? {
-      /(?i:RedHat|Centos|Scientific|Fedora)/ => 'puppetd',
+      /(?i:RedHat|Centos|Scientific|Fedora|Linux)/ => 'puppetd',
       default                                => 'puppet',
     }
   }
@@ -131,6 +164,11 @@ class puppet::params {
 
   $process_user = $::operatingsystem ? {
     default => 'root',
+  }
+
+  $process_group = $::operatingsystem ? {
+    /(?i:OpenBSD)/ => 'wheel',
+    default        => 'root',
   }
 
   $config_dir = $::operatingsystem ? {
@@ -150,7 +188,8 @@ class puppet::params {
   }
 
   $config_file_group = $::operatingsystem ? {
-    default => 'root',
+    /(?i:OpenBSD)/ => 'wheel',
+    default        => 'root',
   }
 
   $config_file_init = $::operatingsystem ? {
@@ -159,16 +198,24 @@ class puppet::params {
   }
 
   $pid_file = $major_version ? {
-    '0.2' => '/var/run/puppet/puppet.pid',
-    '2.x' => '/var/run/puppet/agent.pid',
+    '0.2' => $::operatingsystem ? {
+      /(?i:OpenBSD)/ => '/var/puppet/run/puppet.pid',
+      default        => '/var/run/puppet/puppet.pid',
+    },
+    '2.x' => $::operatingsystme ? {
+      /(?i:OpenBSD)/ => '/var/puppet/run/agent.pid',
+      default        => '/var/run/puppet/agent.pid',
+    }
   }
 
   $data_dir = $::operatingsystem ? {
-    default => '/var/lib/puppet',
+    /(?i:OpenBSD)/ => '/var/puppet',
+    default        => '/var/lib/puppet',
   }
 
   $log_dir = $::operatingsystem ? {
-    default => '/var/log/puppet',
+    /(?i:OpenBSD)/ => '/var/puppet/log',
+    default        => '/var/log/puppet',
   }
 
   $log_file = $::operatingsystem ? {
@@ -178,6 +225,38 @@ class puppet::params {
 
   $port = '8140'
   $protocol = 'tcp'
+
+  $http_proxy_host = ''
+  $http_proxy_port = ''
+
+  $client_daemon_opts = ''
+
+  $manifest_path = '$confdir/manifests/site.pp'
+  $module_path   = '/etc/puppet/modules:/usr/share/puppet/modules'
+  $template_dir  = '/var/lib/puppet/templates'
+
+
+  # DB package resources
+  $mysql_conn_package = $::operatingsystem ? {
+    /(?i:RedHat|Centos|Scientific|Fedora|Linux)/  => 'ruby-mysql',
+    default                                 => 'libmysql-ruby',
+  }
+
+  $sqlite_package = $::osfamily ? {
+    /(?i:RedHat)/ => 'rubygem-sqlite3-ruby',
+    /Debian/    => 'ruby-sqlite3',
+    /Gentoo/    => 'dev-ruby/sqlite3',
+    /(?i:SuSE)/ => $::operatingsystem ? {
+        /(?:OpenSuSE)/ => 'rubygem-sqlite3',
+        default        => 'sqlite3-ruby',
+    },
+    # older Facter versions don't report a Gentoo OS family
+    /Linux/     => $::operatingsystem ? {
+        /Gentoo/ => 'dev-ruby/sqlite3',
+        default  => 'sqlite3-ruby',
+    },
+    default     => 'sqlite3-ruby',
+  }
 
   # General Settings
   $my_class = ''
@@ -191,6 +270,9 @@ class puppet::params {
   $absent = false
   $disable = false
   $disableboot = false
+
+  ### Enable setting of dns_alt_names
+  $dns_alt_names = ''
 
   ### General module variables that can have a site or per module default
   $monitor = false
@@ -206,7 +288,8 @@ class puppet::params {
   $audit_only = false
 
   ### FILE SERVING SOURCE
-  # Sets the correct source for static files - Needed for backwards compatibility
+  # Sets the correct source for static files -
+  # Needed for backwards compatibility
   case $base_source {
     '': { $general_base_source = $puppetversion ? {
       /(^0.25)/ => "puppet:///modules",
