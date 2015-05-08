@@ -81,7 +81,9 @@
   ca = false
 <% end -%>
 
+  default_manifest = $confdir/manifests
   environment = <%= scope.lookupvar('puppet::environment') %>
+  environmentpath = $confdir/environments
 
 <% if scope.lookupvar('puppet::dns_alt_names') != '' -%>
   dns_alt_names = <%= scope.lookupvar('puppet::dns_alt_names') %>
