@@ -8,12 +8,12 @@
 # The parameters used in this class are defined for the main puppet class
 #
 class puppet::server inherits puppet {
-
   ### Managed resources
   package { 'puppet_server':
-    ensure => $puppet::manage_package_server,
-    name   => $puppet::package_server,
-    notify => $puppet::manage_service_server_autorestart,
+    ensure   => $puppet::manage_package_server,
+    name     => $puppet::package_server,
+    notify   => $puppet::manage_service_server_autorestart,
+    provider => $puppet::package_provider,
   }
 
   service { 'puppet_server':
@@ -38,12 +38,27 @@ class puppet::server inherits puppet {
     audit   => $puppet::manage_audit,
   }
 
-  exec { 'puppetmaster-ca-generate':
-    creates => "${puppet::data_dir}/ssl/private_keys/${::fqdn}.pem",
-    command => "/usr/bin/puppet ca generate ${::fqdn}",
-    require => Package['puppet'],
+  $ca_generate_command = $puppet::dns_alt_names ? {
+    undef => "/usr/bin/puppet ca generate ${puppet::server}",
+    ''    => "/usr/bin/puppet ca generate ${puppet::server}",
+    default => "/usr/bin/puppet ca generate --dns-alt-names ${puppet::dns_alt_names} ${puppet::server}",
   }
 
+  exec { 'puppetmaster-ca-generate':
+    creates => "${puppet::ssl_dir}/private_keys/${puppet::server}.pem",
+    command => $ca_generate_command,
+    require => [ Package['puppet'] , File['puppet.conf'] ],
+  }
+
+  if $puppet::bool_enc_backup {
+    file { '/etc/puppet/node.sh':
+      ensure  => present,
+      owner   => root,
+      group   => root,
+      mode    => '0755',
+      content => template('puppet/server/node.sh.erb'),
+    }
+  }
   ### Service monitoring, if enabled ( monitor => true )
   if $puppet::bool_monitor == true {
     monitor::port { "puppet_${puppet::protocol}_${puppet::port}":
@@ -82,7 +97,7 @@ class puppet::server inherits puppet {
   }
 
   ### Rails required when storeconfigs activated
-  if $puppet::bool_storeconfigs == true { include puppet::rails }
+  if $puppet::bool_storeconfigs == true and $puppet::manage_bool_rails { include puppet::rails }
 
   ### Manage database for storeconfigs
   case $puppet::db {
@@ -94,4 +109,13 @@ class puppet::server inherits puppet {
   ### Manage Passenger
   if $puppet::bool_passenger == true { include puppet::server::passenger }
 
+  ### remove stored reports after a week
+  if $puppet::nodetool == "foreman" or $puppet::nodetool == "dashboard" {
+    tidy { $puppet::reports_dir:
+      age     => $puppet::reports_retention_age,
+      recurse => true,
+      rmdirs  => true,
+      type    => ctime;
+    }
+  }
 }

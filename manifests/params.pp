@@ -15,33 +15,43 @@
 class puppet::params {
 
   ### Module's specific variables
+  $enc_backup = false
+
   $major_version = $::puppetversion ? {
     /(^0.)/   => '0.2',
     default   => '2.x',
   }
 
   $mode = 'client'
+
+  $configtimeout = '120'
+
+  ### Check if TheForeman ENC is present
   if $::puppetmaster {
     $server = $::puppetmaster
   } else {
     $server = $::domain ? {
       ''      => 'puppet',
-      default => "puppet.$::domain",
+      default => "puppet.${::domain}",
     }
   }
+
   if $::foreman_env {
     $environment = $::foreman_env
   } else {
     $environment = 'production'
   }
+  $master_environment = 'production'
+
   $allow = $::domain ? {
     ''      => [ '127.0.0.1' ],
-    default => [ "*.$::domain" , '127.0.0.1' ],
+    default => [ "*.${::domain}" , '127.0.0.1' ],
   }
   $bindaddress = '0.0.0.0'
   $listen = false
   $port_listen = '8139'
   $nodetool = ''
+  $reports = ''
   $runmode = 'service'
   $runinterval = '1800'
   $splay = false
@@ -63,31 +73,40 @@ class puppet::params {
   $prerun_command = ''
   $postrun_command = ''
   $externalnodes = false
+  $external_nodes_script = '/etc/puppet/node.rb'
   $passenger = false
+  $passenger_type = 'apache'
+  $passenger_approot = '/etc/puppet/rack'
   $autosign = false
   $storeconfigs = true
   $storeconfigs_thin = true
+  $manage_rails = true
   $db = 'sqlite'
   $db_name = 'puppet'
-  $db_server = 'localhost'
-  $db_port = '8080'
+  $db_server = $::fqdn
+  $db_port = '8081'
   $db_user = 'root'
   $db_password = ''
   $inventoryserver = 'localhost'
   $reporturl = 'http://localhost:3000/reports'
+  $tagmail = false
+  $template_tagmail = ''
 
   $package_server = $::operatingsystem ? {
     /(?i:Debian|Ubuntu|Mint)/ => 'puppetmaster',
+    /(?i:Solaris)/            => 'puppetmaster',
     default                   => 'puppet-server',
   }
 
   $service_server = $::operatingsystem ? {
-    default => 'puppetmaster',
+    /(?i:Solaris)/ => 'cswpuppetmasterd',
+    default        => 'puppetmaster',
   }
 
   $process_server = $::operatingsystem ? {
     /(?i:Debian|Mint)/ => 'ruby',
     /(?i:Ubuntu)/      => 'puppet',
+    /(?i:Solaris)/     => 'puppetmasterd',
     default            => 'puppet',
   }
 
@@ -103,42 +122,69 @@ class puppet::params {
   }
 
   $process_user_server = $::operatingsystem ? {
-    default => 'puppet',
+    /(?i:OpenBSD)/ => '_puppet',
+    default        => 'puppet',
+  }
+
+  $process_group_server = $::operatingsystem ? {
+    /(?i:OpenBSD)/ => '_puppet',
+    default        => 'puppet',
   }
 
   $version_server = 'present'
+  $version_puppetdb_terminus = 'present'
 
   $service_server_autorestart = false
 
   $basedir = $::operatingsystem ? {
     /(?i:RedHat|Centos|Scientific|Fedora|Linux)/ => '/usr/lib/ruby/site_ruby/1.8/puppet',
-    default                                => '/usr/lib/ruby/1.8/puppet',
+    /(?i:Solaris)/                               => '/opt/csw/lib/ruby/site_ruby/1.8/puppet',
+    default                                      => '/usr/lib/ruby/1.8/puppet',
   }
 
   $run_dir = $::operatingsystem ? {
     /(?i:OpenBSD)/ => '/var/puppet/run',
+    /(?i:Windows)/ => "${::windows_common_appdata}\\PuppetLabs\\puppet\\var\\run",
     default        => '/var/run/puppet',
   }
 
   $ssl_dir = $::operatingsystem ? {
     /(?i:OpenBSD)/ => '/etc/puppet/ssl',
+    /(?i:Windows)/ => "${::windows_common_appdata}\\PuppetLabs\\puppet\\etc\\ssl",
     default        => '/var/lib/puppet/ssl',
   }
 
   $template_namespaceauth = ''
   $template_auth = ''
   $template_fileserver = ''
-  $template_passenger = 'puppet/passenger/puppet-passenger.conf.erb'
+  $template_passenger = ''
+
+  $version_puppet = split($::puppetversion, '[.]')
+  $version_major = $version_puppet[0]
+  $template_rack_config = $version_major ? {
+    3       => 'puppet/passenger/config.ru_3',
+    default => 'puppet/passenger/config.ru_3',
+  }
 
   ### Application related parameters
 
   $package = $::operatingsystem ? {
-    /(?i:OpenBSD)/ => 'ruby-puppet',
+    /(?i:OpenBSD)/ => $::operatingsystemrelease ? {
+      /(?i:5\.[0-4])/ => 'ruby-puppet',
+      default         => 'puppet',
+    },
+    /(?i:Windows)/ => 'Puppet',
     default        => 'puppet',
+  }
+
+  $package_provider = $::operatingsystem ? {
+    /(?i:Solaris)/ => 'pkgutil',
+    default        => undef,
   }
 
   $service = $::operatingsystem ? {
     /(?i:OpenBSD)/ => 'puppetd',
+    /(?i:Solaris)/ => 'cswpuppetd',
     default        => 'puppet',
   }
 
@@ -150,20 +196,30 @@ class puppet::params {
     default => true,
   }
 
-  $process = $major_version ? {
-    '0.2' => 'puppetd',
-    '2.x' => $::operatingsystem ? {
+  $process = $::puppetversion ? {
+    /(^0.)/ => 'puppetd',
+    /(^3.)/ => 'puppet',
+    default => $::operatingsystem ? {
       /(?i:RedHat|Centos|Scientific|Fedora|Linux)/ => 'puppetd',
-      default                                => 'puppet',
+      /(?i:Solaris)/                               => 'ruby18',
+      default                                      => 'puppet',
     }
   }
 
+  if $::osfamily == 'Solaris' and versioncmp($::puppetversion,'2.7.21') >= 0 {
+    $solaris_process_args = '/opt/csw/bin/puppet'
+  } else {
+    $solaris_process_args = '/opt/csw/sbin/puppetd'
+  }
+
   $process_args = $::operatingsystem ? {
-    default => '',
+    /(?i:Solaris)/ => $solaris_process_args,
+    default        => '',
   }
 
   $process_user = $::operatingsystem ? {
-    default => 'root',
+    /(?i:Windows)/ => 'S-1-5-32-544',
+    default        => 'root',
   }
 
   $process_group = $::operatingsystem ? {
@@ -172,29 +228,41 @@ class puppet::params {
   }
 
   $config_dir = $::operatingsystem ? {
-    default => '/etc/puppet',
+    /(?i:Windows)/ => "${::windows_common_appdata}\\PuppetLabs\\puppet\\etc",
+    default        => '/etc/puppet',
   }
 
   $config_file = $::operatingsystem ? {
-    default => '/etc/puppet/puppet.conf',
+    /(?i:Windows)/ => "${::windows_common_appdata}\\PuppetLabs\\puppet\\etc\\puppet.conf",
+    default        => '/etc/puppet/puppet.conf',
   }
 
   $config_file_mode = $::operatingsystem ? {
-    default => '0644',
+    /(?i:Windows)/ => '0770',
+    default        => '0644',
   }
 
   $config_file_owner = $::operatingsystem ? {
-    default => 'root',
+    /(?i:Windows)/ => 'S-1-5-32-544',
+    default        => 'root',
   }
 
   $config_file_group = $::operatingsystem ? {
     /(?i:OpenBSD)/ => 'wheel',
+    /(?i:Windows)/ => 'S-1-5-18',
     default        => 'root',
   }
 
   $config_file_init = $::operatingsystem ? {
     /(?i:Debian|Ubuntu|Mint)/ => '/etc/default/puppet',
+    /(?i:Solaris)/            => '',
     default                   => '/etc/sysconfig/puppet',
+  }
+
+  $config_file_init_template = $::operatingsystem ? {
+    /(?i:Debian|Ubuntu|Mint)/ => 'puppet/default.init-debian',
+    /(?i:SLES)/               => 'puppet/default.init-sles',
+    default                   => '',
   }
 
   $pid_file = $major_version ? {
@@ -210,16 +278,25 @@ class puppet::params {
 
   $data_dir = $::operatingsystem ? {
     /(?i:OpenBSD)/ => '/var/puppet',
+    /(?i:Windows)/ => "${::windows_common_appdata}\\PuppetLabs\\puppet\\var",
     default        => '/var/lib/puppet',
   }
 
   $log_dir = $::operatingsystem ? {
     /(?i:OpenBSD)/ => '/var/puppet/log',
+    /(?i:Windows)/ => "${::windows_common_appdata}\\PuppetLabs\\puppet\\var\\log",
     default        => '/var/log/puppet',
+  }
+
+  $log_dir_mode = $::operatingsystem ? {
+    /(?i:Windows)/ => '0770',
+    default        => '0750',
   }
 
   $log_file = $::operatingsystem ? {
     /(?i:Debian|Ubuntu|Mint)/ => '/var/log/syslog',
+    /(?i:Windows)/            => "${::windows_common_appdata}\\PuppetLabs\\puppet\\var\\log\\windows.log",
+    /(?i:Solaris)/            => '/var/adm/messages',
     default                   => '/var/log/messages',
   }
 
@@ -233,29 +310,35 @@ class puppet::params {
 
   $manifest_path = '$confdir/manifests/site.pp'
   $module_path   = '/etc/puppet/modules:/usr/share/puppet/modules'
-  $template_dir  = '/var/lib/puppet/templates'
 
+  $reports_dir = '/var/lib/puppet/reports'
+  $reports_retention_age = '1w'
 
   # DB package resources
   $mysql_conn_package = $::operatingsystem ? {
     /(?i:RedHat|Centos|Scientific|Fedora|Linux)/  => 'ruby-mysql',
-    default                                 => 'libmysql-ruby',
+    /(?i:Solaris)/                                => 'rb18_mysql_2_8_1',
+    default                                       => 'libmysql-ruby',
   }
 
   $sqlite_package = $::osfamily ? {
     /(?i:RedHat)/ => 'rubygem-sqlite3-ruby',
-    /Debian/    => 'ruby-sqlite3',
-    /Gentoo/    => 'dev-ruby/sqlite3',
-    /(?i:SuSE)/ => $::operatingsystem ? {
+    /Debian/      => $::lsbmajdistrelease ? {
+      6       => 'libsqlite3-ruby',
+      default => 'ruby-sqlite3',
+    },
+    /Gentoo/      => 'dev-ruby/sqlite3',
+    /(?i:SuSE)/   => $::operatingsystem ? {
         /(?:OpenSuSE)/ => 'rubygem-sqlite3',
         default        => 'sqlite3-ruby',
     },
     # older Facter versions don't report a Gentoo OS family
-    /Linux/     => $::operatingsystem ? {
+    /Linux/        => $::operatingsystem ? {
         /Gentoo/ => 'dev-ruby/sqlite3',
         default  => 'sqlite3-ruby',
     },
-    default     => 'sqlite3-ruby',
+    /(?i:Solaris)/ => '',
+    default        => 'sqlite3-ruby',
   }
 
   # General Settings
@@ -273,6 +356,7 @@ class puppet::params {
 
   ### Enable setting of dns_alt_names
   $dns_alt_names = ''
+  $certname = $clientcert
 
   ### General module variables that can have a site or per module default
   $monitor = false
@@ -286,18 +370,5 @@ class puppet::params {
   $puppi_helper = 'standard'
   $debug = false
   $audit_only = false
-
-  ### FILE SERVING SOURCE
-  # Sets the correct source for static files -
-  # Needed for backwards compatibility
-  case $base_source {
-    '': { $general_base_source = $puppetversion ? {
-      /(^0.25)/ => "puppet:///modules",
-      /(^0.)/   => "puppet://$servername",
-      default   => "puppet:///modules",
-    }
-  }
-    default: { $general_base_source=$base_source }
-  }
 
 }
