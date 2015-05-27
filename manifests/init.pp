@@ -26,10 +26,10 @@
 # [*server_certname*]
 #   Set certname for the puppetmaster
 #
-# [*ca_authority*]
+# [*ca_server*]
 #   Specify alternative host for the CA server
 #
-# [*ca_server*]
+# [*ca_authority*]
 #   Defines the puppetmaster as the CA server.
 #   Can be used when load balancing puppetmasters Default: true
 #
@@ -510,6 +510,7 @@ class puppet (
   $bool_service_server_autorestart=any2bool($service_server_autorestart)
   $bool_source_dir_purge=any2bool($source_dir_purge)
   $bool_service_autorestart=any2bool($service_autorestart)
+  $bool_ca_authority=any2bool($ca_authority)
   $bool_absent=any2bool($absent)
   $bool_disable=any2bool($disable)
   $bool_disableboot=any2bool($disableboot)

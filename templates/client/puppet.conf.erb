@@ -1,16 +1,16 @@
 # File managed by Puppet
 
 [main]
-  ca_server   = <%= scope.lookupvar('puppet::ca_server') %>
-  vardir = <%= scope.lookupvar('puppet::data_dir') %>
-  logdir = <%= scope.lookupvar('puppet::log_dir') %>
-  rundir = <%= scope.lookupvar('puppet::run_dir') %>
-  ssldir = <%= scope.lookupvar('puppet::ssl_dir') %>
+  ca_server         = <%= scope.lookupvar('puppet::ca_server') %>
+  vardir            = <%= scope.lookupvar('puppet::data_dir') %>
+  logdir            = <%= scope.lookupvar('puppet::log_dir') %>
+  rundir            = <%= scope.lookupvar('puppet::run_dir') %>
+  ssldir            = <%= scope.lookupvar('puppet::ssl_dir') %>
   usecacheonfailure = true
-  user = <%= scope.lookupvar('puppet::process_user') %>
-  group = <%= scope.lookupvar('puppet::process_group') %>
-  configtimeout = <%= scope.lookupvar('puppet::configtimeout') %>
-  masterport = <%= scope.lookupvar('puppet::port') %>
+  user              = <%= scope.lookupvar('puppet::process_user') %>
+  group             = <%= scope.lookupvar('puppet::process_group') %>
+  configtimeout     = <%= scope.lookupvar('puppet::configtimeout') %>
+  masterport        = <%= scope.lookupvar('puppet::port') %>
 
 <% if scope.lookupvar('puppet::http_proxy_host') != '' -%>
   http_proxy_host = "<%= scope.lookupvar('puppet::http_proxy_host') -%>"

@@ -53,17 +53,17 @@
 <% end -%>
 
 [agent]
-  server = <%= scope.lookupvar('puppet::server') %>
-  pluginsync = true
-  report = true
-  reportserver = <%= scope.lookupvar('puppet::server') %>
-  summarize = true
-  graph = true
-  listen = <%= scope.lookupvar('puppet::bool_listen') %>
-  runinterval = <%= scope.lookupvar('puppet::runinterval') %>
-  localconfig = $vardir/localconfig
+  server        = <%= scope.lookupvar('puppet::server') %>
+  pluginsync    = true
+  report        = true
+  reportserver  = <%= scope.lookupvar('puppet::server') %>
+  summarize     = true
+  graph         = true
+  listen        = <%= scope.lookupvar('puppet::bool_listen') %>
+  runinterval   = <%= scope.lookupvar('puppet::runinterval') %>
+  localconfig   = $vardir/localconfig
 <% if scope.lookupvar('puppet::master_environment') != '' -%>
-  environment = <%= scope.lookupvar('puppet::master_environment') %>
+  environment   = <%= scope.lookupvar('puppet::master_environment') %>
 <% end -%> 
 
 [master]
