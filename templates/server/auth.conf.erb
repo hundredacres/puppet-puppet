@@ -54,7 +54,7 @@ allow *
 path /facts
 auth no
 method find, search
-allow <%= scope.lookupvar('puppet::server') %>
+allow <%= scope.lookupvar('puppet::server') %><% if scope.lookupvar('puppet::nodetool') == 'dashboard' %>, dashboard<% end %>
 
 path /facts
 auth no
@@ -66,7 +66,7 @@ allow <%= scope.lookupvar('puppet::server') %>
 path /file_bucket_file
 auth no
 method find, search
-allow <%= scope.lookupvar('puppet::server') %>
+allow <%= scope.lookupvar('puppet::server') %><% if scope.lookupvar('puppet::nodetool') == 'dashboard' %>, dashboard<% end %>
 
 # Access to Environments list, needed to import environments in Foreman
 path /v2.0/environments
