@@ -127,18 +127,9 @@ describe 'puppet' do
   describe 'Test OldGen Module Set Integration' do
     let(:params) { {:monitor => "yes" , :monitor_tool => "puppi" , :firewall => "yes" , :mode => 'server', :firewall_tool => "iptables" , :puppi => "yes" , :port => "42" , :protocol => 'tcp' } }
 
-    it 'should generate monitor resources' do
-      content = catalogue.resource('monitor::process', 'puppet_process').send(:parameters)[:tool]
-      content.should == "puppi"
-    end
-    it 'should generate firewall resources' do
-      content = catalogue.resource('firewall', 'puppet_tcp_42').send(:parameters)[:tool]
-      content.should == "iptables"
-    end
-    it 'should generate puppi resources ' do 
-      content = catalogue.resource('puppi::ze', 'puppet').send(:parameters)[:ensure]
-      content.should == "present"
-    end
+    it { should contain_monitor__process('puppet_process').with_tool('puppi') }
+    it { should contain_firewall('puppet_tcp_42').with_tool('iptables') }
+    it { should contain_puppi__ze('puppet').with_ensure('present') }
   end
 
   describe 'Test params lookup' do
