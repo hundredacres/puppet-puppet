@@ -16,6 +16,10 @@ ARGV << "--rack"
 # reading configuration from ~/.puppet/puppet.conf
 ARGV << "--confdir" << "/etc/puppet"
 ARGV << "--vardir"  << "/var/lib/puppet"
+ARGV << "--debug"
+ARGV << "--trace"
+ARGV << "--profile"
+ARGV << "--logdest" << "/var/log/puppet/puppetmaster.log"
 
 <% if @rubyversion[0..2].to_f >= 1.9 -%>
 # https://projects.puppetlabs.com/issues/20897
