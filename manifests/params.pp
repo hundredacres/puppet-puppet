@@ -55,7 +55,7 @@ class puppet::params {
   $runmode = 'service'
   $runinterval = '1800'
   $splay = false
-  $ca_server = ''
+  $ca_server = $::puppetmaster
   $ca_authority = true
   $tmp_cronminute = fqdn_rand(30)
   $tmp_cronminute2 = $tmp_cronminute + 30
