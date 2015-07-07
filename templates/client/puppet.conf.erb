@@ -11,6 +11,7 @@
   group             = <%= scope.lookupvar('puppet::process_group') %>
   configtimeout     = <%= scope.lookupvar('puppet::configtimeout') %>
   masterport        = <%= scope.lookupvar('puppet::port') %>
+  environment = <%= scope.lookupvar('puppet::environment') %>
 
 <% if scope.lookupvar('puppet::http_proxy_host') != '' -%>
   http_proxy_host = "<%= scope.lookupvar('puppet::http_proxy_host') -%>"
@@ -33,7 +34,6 @@
 <% if scope.lookupvar('puppet::params::major_version') == "0.2" -%>[puppetd]<% else -%>[agent]<% end %>
   certname = <%= scope.lookupvar('puppet::certname') %>
   server = <%= scope.lookupvar('puppet::server') %>
-  environment = <%= scope.lookupvar('puppet::environment') %>
   pluginsync = true
   report = true
   reportserver = <%= scope.lookupvar('puppet::server') %>
