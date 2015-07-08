@@ -39,7 +39,7 @@ class puppet::params {
   if $::foreman_env {
     $environment = $::foreman_env
   } else {
-    $environment = 'production'
+    $environment = $::environment
   }
   $master_environment = 'production'
 
